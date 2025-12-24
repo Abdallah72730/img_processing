@@ -1,6 +1,6 @@
 import requests
 
-
+API_KEYS ="2664729d1ea438cdbc17048ebe5f89b1"
 def construct_ebay_url(item_name: str) -> str:
     searchquery = item_name.replace(" ", "+")
 
