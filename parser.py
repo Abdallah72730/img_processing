@@ -1,5 +1,5 @@
 import re 
-
+9
 
 def extract_prices_from_html(html : str) -> list:
 
@@ -43,4 +43,4 @@ if __name__ == "__main__":
 
     parsed_prices = extract_prices_from_html(html)
 
-    print("Parsed prices from provided html is: ", parsed_prices )
+    print("Parsed prices from provided html is: ", parsed_prices)
