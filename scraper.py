@@ -1,5 +1,11 @@
 import requests
+from dotenv import load_dotenv
+import os
 
+
+load_dotenv()
+
+API_KEYS = os.getenv("API_Key")
 
 def construct_ebay_url(item_name: str) -> str:
     searchquery = item_name.replace(" ", "+")

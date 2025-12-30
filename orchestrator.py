@@ -32,7 +32,7 @@ def run_phase1_pipeline(item_name: str) -> dict:
 
 if __name__ == "__main__":
 
-    test_items = ["iPhone 15", "Playstation 5", "RTX 3090"]
+    test_items = ["Playstation 5"]
 
     for item in test_items:
         result = run_phase1_pipeline(item)
