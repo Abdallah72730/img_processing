@@ -48,7 +48,7 @@ def read_root():
 @app.get("/health")
 def health_check():
     """Check if api dependencies are working"""
-    return {"status":"healthy", "timestamp":asyncio.get_event_loop().time()}
+    return {"status":"healthy", "timestamp":time.time()}
 
 @app.get("/value/{item_name}")
 def get_valuation(
