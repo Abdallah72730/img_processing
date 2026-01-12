@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import File, Form
 from typing import Optional 
 import sys
 import os 
@@ -13,6 +14,7 @@ try:
     from scraper import fetch_html_scraperapi   
     from parser import extract_prices_from_html
     from analyzer import generate_report
+    from vision_api import analyze_image
     print("successfully imported modules ")
 except ImportError as e:
     print(f"Error importing modules: {e}")
@@ -41,6 +43,7 @@ def read_root():
         "endpoints":{
             "/health":"Check API health",
             "/value/{item_name}": "Get valuation for an item",
+            "/analyze_image":"Upload image for recognition and valuation",
             "/analyze-html":"Direct HTML analysis endpoint"
         }
     }
@@ -48,7 +51,9 @@ def read_root():
 @app.get("/health")
 def health_check():
     """Check if api dependencies are working"""
-    return {"status":"healthy", "timestamp":time.time()}
+
+    google_status = "configured" if Google_api_key else "Not configured"
+    return {"status":"healthy", "timestamp":time.time(), "google_vision":google_status}
 
 @app.get("/value/{item_name}")
 def get_valuation(
@@ -134,6 +139,65 @@ def calculate_confidence(data_points: int, price_range:float) -> str:
     else:
         return "High (reliable data)"
 
+
+"""
+implements image recognition 
+"""
+@app.post("/analyze_image")
+async def analyze_image(
+    file: UploadFile = File(...),
+    condition: Optional[str] = Form("Good")
+):
+    #checks if it is an image 
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code = 400, detail="Please upload an image file" )
+    
+    
+    try:
+        #read image 
+        image_data = await file.read()
+
+        #analyze with google
+        analysis = analyze_image(image_data)
+
+        search_query = analysis.get("best_guess", "unknown")
+
+        html_content = fetch_html_scraperapi(search_query)
+        
+        if not html_content or len(html_content) < 100:
+            raise HTTPException(status_code=404, detail=f"No data found for: {search_query}")
+        
+        prices = extract_prices_from_html(html_content)
+        if not prices:
+            raise HTTPException(status_code=404, detail=f"No valid prices found for:{search_query}")
+        
+        report = generate_report(prices)
+        adjusted_value = apply_condition_adjustment(report["median"], condition)
+
+        return {
+            "image_analysis":{
+                "filename":file.filename,
+                "google_results": analysis,
+                "search_used": search_query
+            },
+            "valuation":{
+                "item": search_query,
+                "condition": condition,
+                "estimated_value":adjusted_value,
+                "confidence":calculate_confidence(report["data_points"], report["range"]),
+                "data_summary":{
+                    "sold_listings_analyzed": report["data_points"],
+                    "price_range":f"${report['minimum']:.2f} - ${report['maximum'   ]:.2f}",
+                    "median_price":report["median"],   
+                }
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"image analysis failed: {str(e)}"  )    
+
+
 @app.post("/analyze-html")
 async def analyze_raw_html(html_content: str = ""):
     """
@@ -151,6 +215,8 @@ async def analyze_raw_html(html_content: str = ""):
         "note":"direct HTML analysis",
         "prices_found": len(prices)
     }
+
+
 
 
 
